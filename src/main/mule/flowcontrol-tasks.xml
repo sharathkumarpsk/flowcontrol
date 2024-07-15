@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="58bc9409-d42a-4aa4-b2a9-24d61323fdef" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="a5dc3072-f5ea-4975-9bf5-c343e0ed1679" />
+	<flow name="flowcontrol-tasksFlow" doc:id="7bbdfd5c-615b-468d-a128-32e9e042f9a3" >
+		<http:listener doc:name="fcs1" doc:id="7dd56894-f31b-48c6-a05a-a7bf1d9580e1" config-ref="HTTP_Listener_config" path="fcs1"/>
+		<file:read doc:name="Read" doc:id="aacba492-400b-4bd1-ae9d-6622e168ed3d" config-ref="File_Config" path="/"/>
+		<foreach doc:name="For Each" doc:id="9b3c70cd-f7ba-40c0-a250-77b0a1e758ef" >
+			<logger level="INFO" doc:name="Logger" doc:id="b350e625-506b-4316-b18a-95fc0337b19f" message="----------------------"/>
+		</foreach>
+	</flow>
+</mule>
