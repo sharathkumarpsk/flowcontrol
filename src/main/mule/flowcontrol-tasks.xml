@@ -1,19 +1,166 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:netsuite="http://www.mulesoft.org/schema/mule/netsuite"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/netsuite http://www.mulesoft.org/schema/mule/netsuite/current/mule-netsuite.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
 	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="58bc9409-d42a-4aa4-b2a9-24d61323fdef" >
 		<http:listener-connection host="0.0.0.0" port="8081" />
 	</http:listener-config>
 	<file:config name="File_Config" doc:name="File Config" doc:id="a5dc3072-f5ea-4975-9bf5-c343e0ed1679" />
-	<flow name="flowcontrol-tasksFlow" doc:id="7bbdfd5c-615b-468d-a128-32e9e042f9a3" >
+	<netsuite:config name="NetSuite_Config" doc:name="NetSuite Config" doc:id="5378216e-944b-4801-9e48-67e751b1532c" >
+		<netsuite:token-based-authentication-connection consumerKey="23d779d0c3bae7a1ba289313e33099cdda5c637b85db30f141be0fef6ef94e4c" consumerSecret="baa8c97520d4c88b02802f2183036d23fe32d43b698ab6334ccacc9a1237b162" tokenId="57f8ff4f2bc3b98d07a8fbca7a5137c49fd54ff88f4235e5efa4537b95d3bfeb" tokenSecret="a45ca9990c0764b56f084f335fc71d33d30b42a53ed5df331edf72cb5149bb3d" account="TSTDRV1348579" wsdlVersion="V2020_2" soapPort="services/NetSuitePort_2020_2" />
+	</netsuite:config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="6d71cd8c-fca7-48e2-b04f-486013d111e0" >
+		<db:generic-connection url="jdbc:postgresql://localhost:5432/postgres" driverClassName="org.postgresql.Driver" user="postgres" password="postgres" />
+	</db:config>
+	<flow name="01.foreach-counter" doc:id="7bbdfd5c-615b-468d-a128-32e9e042f9a3" >
 		<http:listener doc:name="fcs1" doc:id="7dd56894-f31b-48c6-a05a-a7bf1d9580e1" config-ref="HTTP_Listener_config" path="fcs1"/>
-		<file:read doc:name="Read" doc:id="aacba492-400b-4bd1-ae9d-6622e168ed3d" config-ref="File_Config" path="/"/>
-		<foreach doc:name="For Each" doc:id="9b3c70cd-f7ba-40c0-a250-77b0a1e758ef" >
-			<logger level="INFO" doc:name="Logger" doc:id="b350e625-506b-4316-b18a-95fc0337b19f" message="-----------------------------------"/>
+		<file:read doc:name="Read" doc:id="aacba492-400b-4bd1-ae9d-6622e168ed3d" config-ref="File_Config" path="D:\Mulesoft Apps[data]\Studio files data\csvbig.csv"/>
+		<ee:transform doc:name="Transform Message" doc:id="9c7dcc6a-7bee-4f33-8673-b4dba7dae231" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="filename" ><![CDATA[%dw 2.0
+output application/java
+---
+attributes.fileName splitBy  "."]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="9b3c70cd-f7ba-40c0-a250-77b0a1e758ef" collection="#[payload]">
+			<logger level="INFO" doc:name="Logger" doc:id="b350e625-506b-4316-b18a-95fc0337b19f" message='#["running each iteration " ++ vars.counter]'/>
+			<file:write doc:name="Write to folder" doc:id="47edfbe4-c3c3-4189-9b34-494e8ad48dcc" config-ref="File_Config" path='#["D:\Mulesoft Apps[data]\write_folder\\"++ vars.fileName[0] ++ vars.counter ++ "." ++ vars.filename[1]]' mode="CREATE_NEW">
+			</file:write>
 		</foreach>
+	</flow>
+	<flow name="02.batch-socreate-idindb" doc:id="e4465ebf-1562-4147-9459-1b5addc3f99f" initialState="started">
+		<http:listener doc:name="fcs2" doc:id="aaf1e9c8-1911-4494-b460-5c8ab7b3f93c" config-ref="HTTP_Listener_config" path="fcs2"/>
+		<file:list doc:name="Get all socreate requests" doc:id="7a6d3b8c-c6e3-40a6-8f49-59f17b79b5b0" config-ref="File_Config" directoryPath="D:\Mulesoft Apps[data]\write_folder">
+			<file:matcher filenamePattern="socreate1*.json" />
+		</file:list>
+		<batch:job jobName="flowcontrol-tasksBatch_Job" doc:id="21412571-a805-459c-9576-440f35a59f9d" >
+			<batch:process-records >
+				<batch:step name="Batch_Step" doc:id="94fed179-cac5-4748-a360-9be94a2cebc1" acceptPolicy="ALL">
+					<batch:aggregator doc:name="every 2 records" doc:id="39af04d4-0f8d-4c8a-8a85-f96c2717901a" size="2">
+						<logger level="INFO" doc:name="Logger" doc:id="b0e39c37-a942-45f4-a620-f3e48d6a38c7" />
+						<ee:transform doc:name="JAVA-JSON" doc:id="4a3cdba4-d99c-481a-b899-085d2578b318" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[output application/json
+---
+payload map read($, "application/json")]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<ee:transform doc:name="Transform Message" doc:id="3d5085fb-a202-43bb-b359-5e7167e0b8ba">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 urn:messages.platform.webservices.netsuite.com
+ns ns1 urn:sales.transactions.webservices.netsuite.com
+---
+{
+	ns0#upsertList @("xmlns:ns1":ns1): {(payload map (npayload,index) -> {
+		ns0#record @(xsi#"type":"ns1:SalesOrder", externalId: npayload.id ): {
+			ns1#entity @("internalId": npayload.entity ): null,
+			ns1#orderStatus: "_pendingFulfillment",
+			ns1#itemList: {
+				ns1#item: npayload.itemlist map (item,index) -> {
+					ns1#item @("internalId": item.item):null,
+					ns1#quantity: item.quantity,
+					ns1#rate: item.rate
+				}
+			}
+		}
+	})}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+						<netsuite:upsert-list doc:name="Create SalesOrder" doc:id="0952b331-980e-46a9-9800-0c404f1932d4" config-ref="NetSuite_Config"/>
+						<set-payload value="#[output application/java&#10;---&#10;payload.upsertListResponse.writeResponseList.*writeResponse.baseRef.@internalId	&#10;map (item,index) -&gt;{&#10;	ids: item&#10;}]" doc:name="Set Payload" doc:id="efb1812f-4004-4d94-b194-8c4545bf5c3c" />
+						<db:bulk-insert doc:name="insert id in test table" doc:id="c9c21e3f-063c-4733-ab69-312c2337c667" config-ref="Database_Config">
+							<db:sql><![CDATA[INSERT INTO "test table"
+(id) VALUES (:ids)]]></db:sql>
+						</db:bulk-insert>
+					</batch:aggregator>
+					<logger level="INFO" doc:name="Logger" doc:id="0a9a07fc-2175-4bae-a04d-066f974249f8" />
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="Logger" doc:id="947eb58b-f9c9-4b85-b7c5-66e5a11bce9f" />
+			</batch:on-complete>
+		</batch:job>
+		<logger level="INFO" doc:name="Logger" doc:id="1b16031a-dc3c-4ab3-85f7-5402e0f421e0" />
+	</flow>
+	<flow name="03.use-parallel-foreach" doc:id="8f706862-3490-4162-b62f-b28697af0954" >
+		<http:listener doc:name="fcs3" doc:id="e0a54f02-09b9-42a5-a1d1-d5070e5951fb" config-ref="HTTP_Listener_config" path="fcs3"/>
+		<db:select doc:name="get all ids from testtable" doc:id="9e27ab12-52a8-4d70-88c4-5ab8e93d6f58" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT id from "test table"]]></db:sql>
+		</db:select>
+		<logger level="INFO" doc:name="getting payload" doc:id="912db411-6726-4073-82e1-d413e1603898" message="Getting #[sizeOf(payload)] records from DB."/>
+		<parallel-foreach doc:name="Parallel For Each" doc:id="daa95f77-6b6d-4a47-8abe-9b5aa59044a4" >
+			<logger level="INFO" doc:name="Logger" doc:id="124028e0-c5f9-47ed-920b-68647717839d" />
+			<logger level="INFO" doc:name="Logger" doc:id="8a0f4c78-e28a-465e-aed6-85ebb9d92b9a" />
+		</parallel-foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="69d450be-04b4-4ef9-b3f2-e40978670638" />
+	</flow>
+	<flow name="04.each2files-dropcsv-filename_date-indb" doc:id="82cb592e-a429-4a02-8d9b-e31dd0ea1193" >
+		<http:listener doc:name="fcs4" doc:id="55f78c70-0ba6-4f93-af09-cf8bc0d76330" config-ref="HTTP_Listener_config" path="fcs4"/>
+		<db:select doc:name="Select ids from table" doc:id="fd1c00d6-a28e-4f89-860e-799357386b01" config-ref="Database_Config">
+			<db:sql ><![CDATA[SELECT id from "test table"]]></db:sql>
+		</db:select>
+		<batch:job jobName="flowcontrol-tasksBatch_Job1" doc:id="14678366-587e-4322-b5df-30c5536f6444" >
+			<batch:process-records >
+				<batch:step name="Batch_Step1" doc:id="429f7797-ef0f-4b9f-bc46-49626045c8aa" >
+					<batch:aggregator doc:name="Batch Aggregator" doc:id="a0ac4a6a-e4a9-4e82-8dec-81fd516f2df6" size="2">
+						<logger level="INFO" doc:name="Getting 2 records" doc:id="eb105b59-bfa8-4c44-b980-4c2d3c2e775e" message="Getting 2 records"/>
+						<ee:transform doc:name="CSV FORMATTING" doc:id="17a692d0-afd8-4479-8ad7-a588e7b260b1" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv
+---
+payload ]]></ee:set-payload>
+							</ee:message>
+							<ee:variables >
+								<ee:set-variable variableName="filename" ><![CDATA[%dw 2.0
+output application/java
+---
+"id" ++ sum(payload.id) ++ ".csv"]]></ee:set-variable>
+							</ee:variables>
+						</ee:transform>
+						<logger level="INFO" doc:name="Logger" doc:id="47f71969-ad9b-4aba-beb3-25bdccb73c7e" />
+						<file:write doc:name="Write" doc:id="73ae4ae3-4794-4f11-8d4c-78d2b2e227e5" config-ref="File_Config" path='#[output application/java&#10;---&#10;"D:\Mulesoft Apps[data]\write_folder\\"++ vars.filename]'/>
+						<ee:transform doc:name="set id" doc:id="04307716-48b6-480c-af5d-0fef0ffa5aaf" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload.id map {
+	"ids": $,
+	"filename": vars.filename,
+	"createddate": now() as String {format: "yyyy-MM-dd HH:mm:ss"}
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<db:bulk-update doc:name="Bulk update" doc:id="699d7380-4aa3-4e0b-84ab-159b993610d3" config-ref="Database_Config">
+							<db:sql><![CDATA[UPDATE "test table"
+SET file = :filename, created= :createddate
+WHERE id = :ids]]></db:sql>
+						</db:bulk-update>
+						<logger level="INFO" doc:name="Logger" doc:id="da69a21c-982d-4f1f-8a8d-0742230a0997" />
+					</batch:aggregator>
+				</batch:step>
+			</batch:process-records>
+			<batch:on-complete >
+				<logger level="INFO" doc:name="payload check" doc:id="4c07e633-2f96-4d48-8c94-2f4b92773efc" message="#[payload]"/>
+			</batch:on-complete>
+		</batch:job>
 	</flow>
 </mule>
